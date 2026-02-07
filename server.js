@@ -4,7 +4,6 @@ const connectDB = require('./src/config/db');
 const errorHandler = require('./src/middleware/errorMiddleware');
 const helmet = require('helmet');
 const cors = require('cors');
-const xss = require('xss-clean');
 const hpp = require('hpp');
 const path = require('path');
 
@@ -16,7 +15,7 @@ connectDB();
 
 const app = express();
 
-const rateLimit = require('express-rate-limit');
+const { rateLimit } = require('express-rate-limit');
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -28,7 +27,6 @@ const limiter = rateLimit({
 // Security Middleware
 app.use(helmet());
 app.use(cors());
-app.use(xss());
 app.use(hpp());
 
 // Apply rate limiting to all requests
@@ -46,7 +44,7 @@ app.get('/', (req, res) => {
 });
 
 // 404 Handler for undefined routes
-app.all('*', (req, res, next) => {
+app.use((req, res, next) => {
     const err = new Error(`Can't find ${req.originalUrl} on this server!`);
     err.status = 'fail';
     err.statusCode = 404;
