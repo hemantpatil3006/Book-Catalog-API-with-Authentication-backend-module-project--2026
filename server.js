@@ -1,6 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./src/config/db');
+const errorHandler = require('./src/middleware/errorMiddleware');
+const helmet = require('helmet');
+const cors = require('cors');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+const path = require('path');
 
 // Load environment variables
 dotenv.config();
@@ -19,7 +25,13 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later'
 });
 
-// Apply to all requests
+// Security Middleware
+app.use(helmet());
+app.use(cors());
+app.use(xss());
+app.use(hpp());
+
+// Apply rate limiting to all requests
 app.use(limiter);
 
 // Middleware
@@ -33,19 +45,16 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-const { error } = require('./src/utils/responseHandler');
+// 404 Handler for undefined routes
+app.all('*', (req, res, next) => {
+    const err = new Error(`Can't find ${req.originalUrl} on this server!`);
+    err.status = 'fail';
+    err.statusCode = 404;
+    next(err);
+});
 
 // Global Error Handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  
-  const status = err.status || 500;
-  const message = process.env.NODE_ENV === 'production' 
-    ? 'Internal Server Error' 
-    : err.message || 'Internal Server Error';
-
-  error(res, message, status);
-});
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

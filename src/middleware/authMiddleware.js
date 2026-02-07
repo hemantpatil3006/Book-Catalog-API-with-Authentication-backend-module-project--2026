@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { error } = require('../utils/responseHandler');
+const CustomError = require('../utils/customError');
 
 const protect = async (req, res, next) => {
   let token;
@@ -13,7 +13,7 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       if (!token) {
-        return error(res, 'Not authorized, no token provided', 401);
+        throw new CustomError('Not authorized, no token provided', 401);
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -21,16 +21,18 @@ const protect = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select('-password');
       
       if (!req.user) {
-        return error(res, 'Not authorized, user not found', 401);
+        throw new CustomError('Not authorized, user not found', 401);
       }
 
       next();
     } catch (err) {
-      console.error(err);
-      return error(res, 'Not authorized, token failed', 401);
+      if (err instanceof CustomError) {
+        return next(err);
+      }
+      next(new CustomError('Not authorized, token failed', 401));
     }
   } else {
-    return error(res, 'Not authorized, no token', 401);
+    next(new CustomError('Not authorized, no token', 401));
   }
 };
 
